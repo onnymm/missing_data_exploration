@@ -12,7 +12,7 @@ except AttributeError:
 
 @pd.api.extensions.register_dataframe_accessor("missing")
 class MissingMethods:
-    def __init__(self, pandas_obj):
+    def __init__(self, pandas_obj: pd.DataFrame):
         self._obj = pandas_obj
 
     def number_missing(self) -> int:
@@ -48,7 +48,7 @@ class MissingMethods:
             self._obj.missing.missing_variable_summary()
             .value_counts("n_missing")
             .reset_index()
-            .rename(columns={"n_missing": "n_missing_in_variable", 0: "n_variables"})
+            .rename(columns={"n_missing": "n_missing_in_variable", "count": "n_variables"})
             .assign(
                 pct_variables=lambda df: df.n_variables / df.n_variables.sum() * 100
             )
@@ -60,7 +60,7 @@ class MissingMethods:
             self._obj.missing.missing_case_summary()
             .value_counts("n_missing")
             .reset_index()
-            .rename(columns={"n_missing": "n_missing_in_case", 0: "n_cases"})
+            .rename(columns={"n_missing": "n_missing_in_case", "count": "n_cases"})
             .assign(pct_case=lambda df: df.n_cases / df.n_cases.sum() * 100)
             .sort_values("pct_case", ascending=False)
         )
