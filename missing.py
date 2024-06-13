@@ -214,3 +214,66 @@ class MissingMethods:
             .value_counts(variables)
             .pipe(lambda df: upsetplot.plot(df, **kwargs))
         )
+    
+    def missing_scatterplot(
+        self,
+        x: str,
+        y: str,
+        proportion_bellow: float= 0.10,
+        jitter: float= 0.75,
+        seed: int= 42
+    ):
+        return (
+            self._obj.
+            select_dtypes(exclude=object)
+            .pipe(
+                lambda df: (
+                    df[df.columns[df.isna().any()]]
+                )
+            )
+            .missing.bind_shadow_matrix(true_string= True, false_string= False)
+            .apply(
+                lambda column: column if "_NA" in column.name else MissingMethods.column_fill_with_dummies(column, proportion_bellow= proportion_bellow, jitter= jitter, seed= seed)
+            )
+            .assign(
+                nullity= lambda df: df[x + "_NA"] | df[y + "_NA"]
+            )
+            .pipe(
+                lambda df: (
+                    sns.scatterplot(
+                        data= df,
+                        x= x,
+                        y= y,
+                        hue= "nullity"
+                    )
+                )
+            )
+        )
+    
+    @classmethod
+    def column_fill_with_dummies(
+        cls,
+        column: pd.Series,
+        proportion_bellow: float= 0.10,
+        jitter: float= 0.75,
+        seed: int= 42
+    ) -> pd.Series:
+        
+        column = column.copy(deep=True)
+
+        # Extract values metadata
+        missing_mask = column.isna()
+        number_missing_values = missing_mask.sum()
+        column_range = column.max() - column.min()
+
+        # Shift data
+        column_shift = column.min() - column.min() * proportion_bellow
+
+        # Create the "jitter" (noise) to be added around the points
+        np.random.seed(seed)
+        column_jitter = (np.random.rand(number_missing_values) - 2) * column_range * jitter
+
+        # Save new dummy data
+        column[missing_mask] = column_shift + column_jitter
+
+        return column
